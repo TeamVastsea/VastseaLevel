@@ -1,0 +1,36 @@
+name: VastseaLevel
+version: '${project.version}'
+main: me.linstar.vastsealevel.VastseaLevel
+
+commands:
+  level:
+    description: "Edit Player Level"
+    usage: "/level <set/add/remove> <player> <value>"
+  experience:
+    usage: "/experience <set/add/remove> <player> <value>"
+    description: "Edit Player Experience"
+
+softdepend: [PlaceholderAPI]
+
+permissions:
+  vastsealevel.level.*:
+    description: "Goal Level System"
+    children:
+      vastsea.level.addlevel: true
+      vastsea.level.removelevel: true
+      vastsea.level.addexperience: true
+      vastsea.level.removeexperience: true
+      vastsea.level.setlevel: true
+      vastsea.level.setexperience: true
+  vastsea.level.addlevel:
+    default: op
+  vastsea.level.removelevel:
+    default: op
+  vastsea.level.addexperience:
+    default: op
+  vastsea.level.removeexperience:
+    default: op
+  vastsea.level.setlevel:
+    default: op
+  vastsea.level.setexperience:
+    default: op
