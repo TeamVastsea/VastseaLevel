@@ -1,1 +1,2 @@
 url: "mongodb://localhost:27017"
+rank_formatter: "{rank}.§3{name}§f - §e{level} §a级"

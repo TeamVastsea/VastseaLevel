@@ -2,6 +2,7 @@ package me.linstar.vastsealevel;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import org.bson.Document;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -15,9 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class DataBridge {
     private static final Map<String, Integer> DATA_CACHE = new HashMap<>();
-    private static final Map<String, String> NAME_CACHE = new ConcurrentHashMap<>();     //ConcurrentHashMap以保障线程安全(大概)
     private static final Map<String, Integer> ONLINE_RANK = new ConcurrentHashMap<>();
-    private static final List<String> RANK = new ArrayList<>();
+    private static final List<Document> RANK = new ArrayList<>();
 
     public static void setExperience(String uuid, int valued){
         int value = Math.max(valued, 0);
@@ -36,7 +36,7 @@ public class DataBridge {
             return DATA_CACHE.get(uuid);
         }
 
-        VastseaLevel.LOGGER.info("Can not found player in cache, please rejoin.");
+        //VastseaLevel.LOGGER.info("Can not find player in cache, please rejoin.");
 
         return 0;
     }
@@ -46,20 +46,19 @@ public class DataBridge {
             return;
         }
 
-        int experience = (int) Math.ceil((Math.pow(level + 2.5, 2) -12.25)*1250);
+        int experience = levelToExp(level);
         setExperience(uuid, experience);
     }
     public static int getLevel(String uuid){
-        return (int)(Math.sqrt((double) getExperience(uuid) / 1250 + 12.25) -2.5);
+        return expToLevel(getExperience(uuid));
     }
     public static void genData(Player player){
         String uuid = player.getUniqueId().toString();
-        if (!(NAME_CACHE.containsKey(uuid) && NAME_CACHE.get(uuid).equals(player.getName()))){
-            NAME_CACHE.put(uuid, player.getName());
-        }
+        String name = player.getName();
 
         runTask(()->{
             DATA_CACHE.put(uuid, VastseaLevel.DATABASE.getExperience(uuid));
+            VastseaLevel.DATABASE.updateName(uuid, name);
         });
     }
 
@@ -67,13 +66,31 @@ public class DataBridge {
         DATA_CACHE.remove(uuid);
     }
 
-    public static String getNameByRank(int rank){
-        if (rank > 10 || RANK.size() < rank || rank <= 0){
+    public static String getTextByRank(int rank){
+        if (rank > 10  || rank <= 0){
             VastseaLevel.LOGGER.warning("Invalid rank, only first ten provided");
             return "";
         }
 
-        return getNameInCache(RANK.get(rank -1));
+        if (RANK.size() < rank){
+            return "          ";
+        }
+
+        Document document = RANK.get(rank-1);
+        String name = document.getString("name");
+        if (name.isEmpty()){
+            name = "Unknown";
+            String uuid = document.getString("uuid");
+            Bukkit.getScheduler().runTaskAsynchronously(VastseaLevel.INSTANCE, ()->{
+               VastseaLevel.DATABASE.updateName(uuid, getNameByUUID(uuid));
+            });
+        }
+        return VastseaLevel.INSTANCE.config.getString("rank_formatter")
+                .replace("{rank}", String.valueOf(rank))
+                .replace("{name}", name)
+                .replace("{level}", String.valueOf(
+                        expToLevel(document.getInteger("xp"))
+                ));
     }
 
     public static int getRank(String uuid){
@@ -82,24 +99,6 @@ public class DataBridge {
         }
 
         return 0;
-    }
-
-    private static String getNameInCache(String uuid){
-        if (NAME_CACHE.containsKey(uuid)){
-            return NAME_CACHE.get(uuid);
-        }
-
-        Bukkit.getScheduler().runTaskAsynchronously(VastseaLevel.INSTANCE, ()->{
-            String name = getNameByUUID(uuid);
-
-            if (name.isEmpty()){
-                return;
-            }
-
-            NAME_CACHE.put(uuid, name);
-        });
-
-        return "";
     }
 
     private static String getNameByUUID(String uuid){
@@ -136,7 +135,7 @@ public class DataBridge {
     public static void start(){
         //三十秒更新一次前十排行数据&在线玩家排行数据
         Bukkit.getScheduler().runTaskTimerAsynchronously(VastseaLevel.INSTANCE, ()->{
-            List<String> rank = VastseaLevel.DATABASE.getRank();
+            List<Document> rank = VastseaLevel.DATABASE.getRank();
             if (rank == null){
                 return;
             }
@@ -145,6 +144,7 @@ public class DataBridge {
             RANK.clear();
             RANK.addAll(rank);
         }, 0, 20*30);
+
         Bukkit.getScheduler().runTaskTimer(VastseaLevel.INSTANCE, ()->{
             List<String> uuids = new ArrayList<>();
             for (Player player: Bukkit.getOnlinePlayers()){
@@ -152,7 +152,7 @@ public class DataBridge {
             }
 
             ONLINE_RANK.clear();
-            ONLINE_RANK.putAll(VastseaLevel.DATABASE.getOnlineRank(uuids));
+            ONLINE_RANK.putAll(VastseaLevel.DATABASE.getRanks(uuids));
         }, 0, 20*30);
 
         VastseaLevel.LOGGER .info("Start Data Bridge Tasks.");
@@ -166,5 +166,13 @@ public class DataBridge {
                 e.printStackTrace();
             }
         });
+    }
+
+    public static int levelToExp(int level){
+        return  (int) Math.ceil((Math.pow(level + 2.5, 2) -12.25)*1250);
+    }
+
+    public static int expToLevel(int exp){
+        return (int)(Math.sqrt((double) exp / 1250 + 12.25) -2.5);
     }
 }

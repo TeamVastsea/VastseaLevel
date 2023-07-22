@@ -48,6 +48,7 @@ public class DataBase {
             InsertOneResult result = collection.insertOne(new Document()
                     .append("_id", new ObjectId())
                     .append("uuid", uuid)
+                    .append("name", "")
                     .append("xp", 0));
             if (result.getInsertedId() == null){
                 VastseaLevel.LOGGER.info("Fail to create player form, is the database server alive?");
@@ -66,8 +67,8 @@ public class DataBase {
         }
     }
 
-    public List<String> getRank(){
-        List<String> data = new ArrayList<>();
+    public List<Document> getRank(){
+        List<Document> data = new ArrayList<>();
 
         BasicDBObject object = new BasicDBObject();
         object.put("xp", -1);
@@ -82,7 +83,7 @@ public class DataBase {
                 if (doc == null){
                     continue;
                 }
-                data.add(doc.getString("uuid"));
+                data.add(doc);
             }
         }catch (Exception e){
             e.printStackTrace();
@@ -91,12 +92,15 @@ public class DataBase {
         return data;
     }
 
-    public Map<String, Integer> getOnlineRank(List<String> uuids){
+    public Map<String, Integer> getRanks(List<String> uuids){
 
         Map<String, Integer> result = new HashMap<>();
+        BasicDBObject object = new BasicDBObject();
+        object.put("xp", -1);
+
         for (String uuid: uuids){
             int rank = 0;
-            try(MongoCursor<Document> cursor = collection.find(gte("xp", getExperience(uuid))).iterator()) {
+            try(MongoCursor<Document> cursor = collection.find(gte("xp", getExperience(uuid))).sort(object).iterator()) {
                 while (cursor.hasNext()) {
                     cursor.tryNext();
                     rank ++;
@@ -107,5 +111,16 @@ public class DataBase {
         }
 
         return result;
+    }
+
+    public void updateName(String uuid, String name){
+        Document document = collection.find(eq("uuid", uuid)).first();
+        if (document == null){
+            return;
+        }
+
+        if (!Objects.equals(document.getString("name"), name)){
+            collection.updateOne(document, Updates.set("name", name));
+        }
     }
 }

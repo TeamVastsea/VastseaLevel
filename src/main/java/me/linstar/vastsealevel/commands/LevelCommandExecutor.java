@@ -1,6 +1,7 @@
 package me.linstar.vastsealevel.commands;
 
 import me.linstar.vastsealevel.DataBridge;
+import me.linstar.vastsealevel.VastseaLevel;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.command.Command;
@@ -15,14 +16,23 @@ public class LevelCommandExecutor implements TabExecutor {
     private static final String LEVEL = "level";
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (Objects.equals(args[0], "reload")){
+            if (!sender.hasPermission("vastsea.level.reload")){
+                sender.sendMessage("§4你没有权限!");
+                return true;
+            }
+            VastseaLevel.INSTANCE.reload();
+            return true;
+        }
+
         if (args.length != 3){
-            sender.sendMessage(Color.RED + "无效参数");
+            sender.sendMessage("§4无效参数");
             return true;
         }
 
         Player player = Bukkit.getPlayer(args[1]);
         if (player == null){
-            sender.sendMessage(Color.RED + "找不到玩家");
+            sender.sendMessage("§4找不到玩家");
             return true;
         }
 
@@ -38,20 +48,26 @@ public class LevelCommandExecutor implements TabExecutor {
             case "add":
                 return execution(sender, command, "add", ()->{
                     DataBridge.setLevel(uuid, DataBridge.getLevel(uuid) + value);
+                    sender.sendMessage(String.format("已将%d级等级添加给%s", value ,player.getName()));
             }, ()->{
                     DataBridge.setExperience(uuid, DataBridge.getExperience(uuid) + value);
+                    sender.sendMessage(String.format("已将%d点经验添加给%s", value ,player.getName()));
                 });
             case "remove":
                 return execution(sender, command, "remove", ()->{
                     DataBridge.setLevel(uuid, DataBridge.getLevel(uuid) - value);
+                    sender.sendMessage(String.format("已将%d级等级去除给%s", value ,player.getName()));
                 }, ()->{
                     DataBridge.setExperience(uuid, DataBridge.getExperience(uuid) - value);
+                    sender.sendMessage(String.format("已将%d点经验去除给%s", value ,player.getName()));
                 });
             case "set":
                 return execution(sender, command, "set", ()->{
                     DataBridge.setLevel(uuid, value);
+                    sender.sendMessage(String.format("已将%s的等级设为%d级", player.getName(), value ));
                 }, ()->{
                     DataBridge.setExperience(uuid, value);
+                    sender.sendMessage(String.format("已将%s的经验设为%d点", player.getName(), value));
                 });
             default:
                 sender.sendMessage("§4无效操作");

@@ -22,6 +22,7 @@ permissions:
       vastsea.level.removeexperience: true
       vastsea.level.setlevel: true
       vastsea.level.setexperience: true
+      vastsea.level.reload: true
   vastsea.level.addlevel:
     default: op
   vastsea.level.removelevel:
@@ -33,4 +34,6 @@ permissions:
   vastsea.level.setlevel:
     default: op
   vastsea.level.setexperience:
+    default: op
+  vastsea.level.reload:
     default: op
